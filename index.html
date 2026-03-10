@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Evernote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #0c0f14;
+      --surface:  #141820;
+      --border:   #1f2733;
+      --border2:  #2a3545;
+      --text:     #dce4f0;
+      --muted:    #5a6a82;
+      --accent:   #4f9cf9;
+      --accent2:  #a78bfa;
+      --success:  #34d399;
+      --warn:     #fbbf24;
+      --danger:   #f87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── token gate ── */
+    #gate {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gate-box {
+      width: min(420px, 90vw);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 2rem;
+      background: var(--surface);
+    }
+    .gate-box h2 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.6rem;
+      margin-bottom: .25rem;
+      color: #f0f4ff;
+    }
+    .gate-box p { color: var(--muted); margin-bottom: 1.25rem; font-size: .85rem; line-height: 1.6; }
+    .gate-box input {
+      width: 100%; padding: .65rem .85rem;
+      background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 7px; color: var(--text); font-family: inherit;
+      font-size: .9rem; margin-bottom: .75rem;
+      outline: none; transition: border-color .2s;
+    }
+    .gate-box input:focus { border-color: var(--accent); }
+    .gate-box input::placeholder { color: var(--muted); }
+
+    /* ── layout ── */
+    #app { display: none; min-height: 100vh; }
+
+    header {
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(12,15,20,.92);
+      backdrop-filter: blur(12px);
+    }
+    .logo {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.35rem;
+      color: #f0f4ff;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .header-actions { display: flex; gap: .5rem; }
+
+    main {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 5rem;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 2rem;
+    }
+    @media (max-width: 680px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    /* ── sidebar ── */
+    .sidebar h3 {
+      font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: .6rem;
+    }
+    .tag-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+    .tag-item {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .45rem .7rem; border-radius: 6px; cursor: pointer;
+      transition: background .15s; color: var(--text);
+      text-decoration: none; font-size: .88rem;
+    }
+    .tag-item:hover { background: var(--surface); }
+    .tag-item.active { background: var(--border2); color: #fff; }
+    .tag-item .count {
+      margin-left: auto; font-size: .7rem;
+      background: var(--border); color: var(--muted);
+      padding: .1rem .4rem; border-radius: 4px;
+    }
+    .tag-new {
+      margin-top: .75rem;
+      display: flex; gap: .4rem;
+    }
+    .tag-new input {
+      flex: 1; padding: .4rem .6rem;
+      background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 6px; color: var(--text); font-family: inherit;
+      font-size: .82rem; outline: none; transition: border-color .2s;
+    }
+    .tag-new input:focus { border-color: var(--accent); }
+
+    /* ── file list ── */
+    .file-area h3 {
+      font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: .75rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .file-list { display: flex; flex-direction: column; gap: .4rem; }
+    .file-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .7rem 1rem;
+      display: flex; align-items: center; gap: .75rem;
+      transition: border-color .15s, background .15s;
+    }
+    .file-card:hover { border-color: var(--border2); background: #181e28; }
+    .file-card .title {
+      flex: 1; overflow: hidden;
+      white-space: nowrap; text-overflow: ellipsis;
+      font-size: .88rem;
+    }
+    .file-card .title a {
+      color: var(--accent); text-decoration: none;
+    }
+    .file-card .title a:hover { text-decoration: underline; }
+    .file-card .date { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+    .file-card .move-area {
+      display: flex; gap: .35rem; align-items: center;
+    }
+    .file-card select {
+      padding: .25rem .4rem;
+      background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 5px; color: var(--text); font-family: inherit;
+      font-size: .78rem; outline: none; cursor: pointer;
+    }
+
+    /* ── status bar ── */
+    #status {
+      position: fixed; bottom: 1.25rem; right: 1.5rem;
+      padding: .6rem 1rem; border-radius: 8px;
+      font-size: .82rem; font-weight: 500;
+      background: var(--surface); border: 1px solid var(--border2);
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      transition: opacity .3s;
+      opacity: 0; pointer-events: none;
+      max-width: 320px;
+    }
+    #status.show { opacity: 1; }
+    #status.info    { border-color: var(--accent);  color: var(--accent); }
+    #status.success { border-color: var(--success); color: var(--success); }
+    #status.error   { border-color: var(--danger);  color: var(--danger); }
+
+    /* ── buttons ── */
+    .btn {
+      padding: .4rem .85rem; border-radius: 6px; border: none;
+      font-family: inherit; font-size: .82rem; font-weight: 500;
+      cursor: pointer; transition: opacity .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:hover { opacity: .85; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary  { background: var(--accent);  color: #fff; }
+    .btn-sm       { padding: .3rem .65rem; font-size: .78rem; }
+    .btn-ghost    { background: transparent; border: 1px solid var(--border2); color: var(--muted); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); opacity: 1; }
+    .btn-danger   { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+
+    .empty { color: var(--muted); font-size: .85rem; padding: 1rem 0; }
+    .spinner {
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid var(--muted); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .6s linear infinite;
+      margin-right: .4rem; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- Token gate -->
+<div id="gate">
+  <div class="gate-box">
+    <h2>Evernote Archive</h2>
+    <p>GitHub Personal Access Token を入力してください。<br>
+       <code>repo</code> + <code>workflow</code> スコープが必要です。<br>
+       このブラウザに保存され、次回から不要になります。</p>
+    <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxx" autocomplete="off">
+    <div style="display:flex;gap:.5rem">
+      <input type="text" id="ownerInput" placeholder="GitHubユーザー名" style="flex:1">
+      <input type="text" id="repoInput"  placeholder="リポジトリ名"     style="flex:1">
+    </div>
+    <div style="margin-top:.75rem;display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="saveToken()">保存して開く</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main app -->
+<div id="app">
+  <header>
+    <div class="logo">🗂 Evernote Archive</div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="rebuildIndex()">🔄 index再生成</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearToken()">🔑 トークン変更</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Sidebar: tag list -->
+    <aside class="sidebar">
+      <h3>フォルダ</h3>
+      <ul class="tag-list" id="tagList"></ul>
+      <div class="tag-new">
+        <input type="text" id="newTagInput" placeholder="新しいタグ名…" onkeydown="if(event.key==='Enter')createTag()">
+        <button class="btn btn-primary btn-sm" onclick="createTag()">＋</button>
+      </div>
+    </aside>
+
+    <!-- File list -->
+    <section class="file-area">
+      <h3 id="fileAreaTitle">ファイル一覧</h3>
+      <div class="file-list" id="fileList"></div>
+    </section>
+  </main>
+</div>
+
+<div id="status"></div>
+
+<script>
+// ── Config ───────────────────────────────────────────────────────────────────
+let CFG = {};
+
+function loadConfig() {
+  const raw = localStorage.getItem("Evernote_archive_cfg");
+  if (!raw) return false;
+  CFG = JSON.parse(raw);
+  return !!(CFG.token && CFG.owner && CFG.repo);
+}
+
+function saveToken() {
+  const token = document.getElementById("tokenInput").value.trim();
+  const owner = document.getElementById("ownerInput").value.trim();
+  const repo  = document.getElementById("repoInput").value.trim();
+  if (!token || !owner || !repo) { showStatus("すべて入力してください", "error"); return; }
+  CFG = { token, owner, repo };
+  localStorage.setItem("Evernote_archive_cfg", JSON.stringify(CFG));
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  loadData();
+}
+
+function clearToken() {
+  localStorage.removeItem("Evernote_archive_cfg");
+  location.reload();
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let allFiles    = [];   // { name, path, date, display }
+let tagFolders  = [];   // folder names (not html/, scripts/, .github/)
+let activeTag   = null; // null = html/ (untagged)
+
+// ── GitHub API helpers ───────────────────────────────────────────────────────
+const API = () => `https://api.github.com/repos/${CFG.owner}/${CFG.repo}`;
+const headers = () => ({
+  Authorization: `token ${CFG.token}`,
+  Accept: "application/vnd.github+json",
+});
+
+async function listContents(path) {
+  const r = await fetch(`${API()}/contents/${path}`, { headers: headers() });
+  if (!r.ok) return [];
+  const j = await r.json();
+  return Array.isArray(j) ? j : [];
+}
+
+async function triggerWorkflow(action, payload) {
+  const r = await fetch(`${API()}/actions/workflows/organize.yml/dispatches`, {
+    method: "POST",
+    headers: { ...headers(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ref: "main",
+      inputs: { action, payload: JSON.stringify(payload) }
+    })
+  });
+  return r.ok;
+}
+
+// ── Load data ────────────────────────────────────────────────────────────────
+async function loadData() {
+  showStatus("読み込み中…", "info", 0);
+
+  // リポジトリ直下のフォルダ一覧
+  const root = await listContents("");
+  const SKIP = new Set(["html", "scripts", ".github", "img"]);
+  tagFolders = root
+    .filter(e => e.type === "dir" && !e.name.startsWith(".") && !SKIP.has(e.name))
+    .map(e => e.name);
+
+  // html/ 直下のファイル一覧
+  const htmlFiles = await listContents("html");
+  allFiles = htmlFiles
+    .filter(f => f.type === "file" && f.name.endsWith(".html") && f.name !== "index.html")
+    .map(f => ({
+      name: f.name,
+      path: f.path,
+      date: f.name.length > 19
+        ? f.name.slice(0,19).replace("T"," ").replace(/-/g,"/").replace(/-/,"/")
+        : "",
+      display: (f.name.length > 20 ? f.name.slice(20) : f.name).replace(/\.html$/,"").replace(/_/g," ")
+    }));
+
+  renderSidebar();
+  renderFiles();
+  hideStatus();
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const ul = document.getElementById("tagList");
+  ul.innerHTML = "";
+
+  // "未分類" 行
+  const li0 = document.createElement("li");
+  li0.className = "tag-item" + (activeTag === null ? " active" : "");
+  li0.innerHTML = `<span>📄 未分類</span><span class="count">${allFiles.length}</span>`;
+  li0.onclick = () => { activeTag = null; renderSidebar(); renderFiles(); };
+  ul.appendChild(li0);
+
+  tagFolders.forEach(tag => {
+    const li = document.createElement("li");
+    li.className = "tag-item" + (activeTag === tag ? " active" : "");
+    li.innerHTML = `<span>📁 ${esc(tag)}</span><span class="count">…</span>`;
+    li.onclick = () => selectTag(tag, li);
+    ul.appendChild(li);
+  });
+}
+
+async function selectTag(tag, liEl) {
+  activeTag = tag;
+  renderSidebar();
+  showStatus("読み込み中…", "info", 0);
+  const files = await listContents(tag);
+  const tagged = files
+    .filter(f => f.type === "file" && f.name.endsWith(".html") && f.name !== "index.html")
+    .map(f => ({
+      name: f.name,
+      path: f.path,
+      date: f.name.length > 19
+        ? f.name.slice(0,19).replace("T"," ").replace(/-/g,"/").replace(/-/,"/")
+        : "",
+      display: (f.name.length > 20 ? f.name.slice(20) : f.name).replace(/\.html$/,"").replace(/_/g," "),
+      inTag: tag
+    }));
+  hideStatus();
+  renderFiles(tagged, tag);
+}
+
+function renderFiles(files, folderLabel) {
+  const list  = document.getElementById("fileList");
+  const title = document.getElementById("fileAreaTitle");
+  const src   = files ?? allFiles;
+  const label = folderLabel ?? "未分類（html/）";
+
+  title.textContent = label + ` — ${src.length} 件`;
+  list.innerHTML = "";
+
+  if (src.length === 0) {
+    list.innerHTML = '<p class="empty">ファイルなし</p>';
+    return;
+  }
+
+  src.forEach(f => {
+    const card = document.createElement("div");
+    card.className = "file-card";
+
+    // ファイルへのリンク
+    const href = f.inTag
+      ? `./${f.inTag}/${f.name}`
+      : `./html/${f.name}`;
+
+    // タグ移動セレクト（未分類のみ表示）
+    const moveHtml = f.inTag ? "" : `
+      <div class="move-area">
+        <select id="sel_${f.name}" onchange="moveFile('${f.path}','${f.name}',this.value)">
+          <option value="">→ タグへ移動…</option>
+          ${tagFolders.map(t => `<option value="${t}">${t}</option>`).join("")}
+        </select>
+      </div>`;
+
+    card.innerHTML = `
+      <div class="title"><a href="${href}" target="_blank">${esc(f.display)}</a></div>
+      <div class="date">${esc(f.date)}</div>
+      ${moveHtml}`;
+
+    list.appendChild(card);
+  });
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+async function createTag() {
+  const input = document.getElementById("newTagInput");
+  const tag   = input.value.trim().replace(/[^\w\u3040-\u9fff-]/g, "_");
+  if (!tag) return;
+  if (tagFolders.includes(tag)) { showStatus("そのタグは既に存在します", "error"); return; }
+
+  showStatus("タグフォルダを作成中…", "info", 0);
+  // フォルダ作成は organize.py の rebuild_index でも作られるが、
+  // 空フォルダはGitに存在できないので .gitkeep を置く
+  const r = await fetch(`${API()}/contents/${tag}/.gitkeep`, {
+    method: "PUT",
+    headers: { ...headers(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: `create tag folder: ${tag}`,
+      content: btoa(""),
+    })
+  });
+  if (!r.ok) { showStatus("フォルダ作成失敗", "error"); return; }
+
+  input.value = "";
+  tagFolders.push(tag);
+  tagFolders.sort();
+  renderSidebar();
+  renderFiles();
+  showStatus(`📁 "${tag}" を作成しました`, "success");
+}
+
+async function moveFile(filePath, fileName, tag) {
+  if (!tag) return;
+  // セレクトをリセット
+  const sel = document.getElementById(`sel_${fileName}`);
+  if (sel) sel.value = "";
+
+  showStatus(`"${fileName}" を "${tag}" に移動中…`, "info", 0);
+  const ok = await triggerWorkflow("move_file", { file: filePath, tag });
+
+  if (ok) {
+    // ローカル state から除去して即反映
+    allFiles = allFiles.filter(f => f.name !== fileName);
+    renderSidebar();
+    renderFiles();
+    showStatus(`✅ Actions をトリガーしました。30秒ほどで反映されます。`, "success");
+  } else {
+    showStatus("❌ Actions のトリガーに失敗しました", "error");
+  }
+}
+
+async function rebuildIndex() {
+  showStatus("index 再生成を実行中…", "info", 0);
+  const ok = await triggerWorkflow("rebuild_index", {});
+  ok ? showStatus("✅ rebuild_index をトリガーしました", "success")
+     : showStatus("❌ 失敗しました", "error");
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+let statusTimer;
+function showStatus(msg, type = "info", ms = 4000) {
+  const el = document.getElementById("status");
+  el.className = `show ${type}`;
+  el.textContent = msg;
+  clearTimeout(statusTimer);
+  if (ms > 0) statusTimer = setTimeout(hideStatus, ms);
+}
+function hideStatus() {
+  document.getElementById("status").className = "";
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+if (loadConfig()) {
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display  = "block";
+  loadData();
+}
+</script>
+</body>
+</html>

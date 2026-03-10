@@ -1,0 +1,32 @@
+{
+    "manifest_version": 3,
+    "name": "HTML Saver",
+    "version": "1.1",
+    "description": "選択したHTMLをGitHubに保存するChrome拡張",
+    "permissions": [
+        "contextMenus",
+        "scripting",
+        "activeTab",
+        "notifications"
+    ],
+    "host_permissions": [
+        "https://api.github.com/*",
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ],
+    "icons": {
+        "128": "icons/icon128.png"
+    }
+}
